@@ -1,0 +1,54 @@
+#!/bin/sh
+# THE BIN SH IS A SYMLINK TO /bin/busybox sh 
+echo "=== === === === === === ==="
+echo "===  Init Script Start  ==="
+echo "=== === === === === === ==="
+###########################################################
+########## ---- Mount essential filesystems ---- ##########
+###########################################################
+#These are the really important thingys
+
+/bin/busybox mount -t proc none /proc
+/bin/busybox mount -t sysfs none /sys
+/bin/busybox mount -t devtmpfs none /dev
+
+########################################################
+##### This is our persistant filestorage ###############
+##### qemu-virtio-blk is detectable as /dev/vda ########
+########################################################
+mount -t ext4 /dev/vda /mnt/config
+
+echo "=== === === === === === === === === ==="
+echo "===  Mounted proc, sys, dev & mnt   ==="
+echo "=== === === === === === === === === ==="
+
+
+echo "=== === === === === === === === === === ==="
+echo "===Looping through /mnt/config/init/... ==="
+echo "=== === === === === === === === === === ==="
+
+find /mnt/config/init -maxdepth 1 -name "*.sh" -type f | while read -r script; do
+    if [ -r "$script" ]; then
+        . "$script"
+    fi
+done
+
+
+
+# --- Attempt to become session leader and redirect TTY ---
+echo "=== === === === === === === === === === === === === === === === === ==="
+echo "===  Attempting to become session leader and redirect to /dev/ttyS0 ===" 
+echo "===        If you go to a shell now you're successfully booted      ==="
+echo "=== === === === === === === === === === === === === === === === === ==="
+
+exec /bin/busybox setsid /bin/busybox sh -c 'exec /bin/busybox sh </dev/ttyS0 >/dev/ttyS0 2>&1'
+
+echo "This line should NOT appear if the above exec with setsid succeeded."
+
+
+
+# If the above complex command failed, we might try a simpler exec (less likely to work)
+# exec /bin/busybox sh
+
+echo "FATAL: Failed to launch interactive shell."
+exit 1
